@@ -1,0 +1,16 @@
+\contentsline {section}{Introduction}{1}{section*.2}
+\contentsline {section}{Methods}{2}{section*.3}
+\contentsline {subsection}{TimeMeter Algorithm: assessing temporal similarity}{2}{section*.4}
+\contentsline {subsection}{TimeMeter Algorithm: identifies differential progression genes}{2}{section*.5}
+\contentsline {section}{Quick Start}{3}{section*.6}
+\contentsline {subsection}{\textbf {Step 1: Loading the data (normalized gene expression values)}}{3}{section*.7}
+\contentsline {subsection}{\textbf {Step 2: Temporal Alignment via DTW}}{5}{section*.8}
+\contentsline {subsection}{\textbf {Step 3: Truncation}}{6}{section*.9}
+\contentsline {subsection}{\textbf {Step 4: Calculating four measurements that jointly assess gene pair temporal similarity}}{7}{section*.10}
+\contentsline {subsection}{\textbf {Step 5: Calculating pairwise relationship between aligned query time and aligned reference time}}{8}{section*.11}
+\contentsline {section}{More Examples}{9}{section*.12}
+\contentsline {subsection}{\textbf {Dynamical Speed Difference}}{9}{section*.13}
+\contentsline {subsection}{\textbf {Mixture patterns}}{14}{section*.14}
+\contentsline {subsection}{\textbf {Adjusted PAS}}{20}{section*.15}
+\contentsline {section}{Citation}{22}{section*.16}
+\contentsline {section}{Contact}{22}{section*.17}

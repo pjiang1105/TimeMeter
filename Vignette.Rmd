@@ -1,0 +1,343 @@
+---
+title: 'TimeMeter: An R package for assessing temporal gene expression similarity
+  and identifying differentially progressing genes'
+author: "| Peng Jiang\n| Regenerative Biology Laboratory, \n| Morgridge Institute
+  for Research\n| Madison, WI 53707, USA\n"
+date: "03/21/2020"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+  word_document:
+    toc: yes
+    toc_depth: '3'
+  html_document:
+    toc: yes
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+TimeMeter is a statistical tool and R package to assess temporal gene expression pattern similarity, and identify differential progressing genes. TimeMeter uses the dynamic time warping (DTW) algorithm to align two temporal sequences. TimeMeter first post-processes DTW alignment by truncating certain start or end points based on alignment patterns. This will result in a truncated alignment which represents the time frames from each time series that are comparable. Then it calculates four measurements that jointly assess gene pair temporal similarity: percentage of alignment for (1) query and for (2) reference, respectively; (3) aligned gene expression correlation; (4) likelihood of alignment arising by chance. These four novel metrics in TimeMeter give temporal similarity assessments on different aspects, and the joint requirement of these four metrics will give a high confident assessment for the temporal pattern similarity. For gene pairs with similar temporal patterns, TimeMeter partitions the temporal associations into separate segments via piecewise regression. The differential progression between gene pairs is calculated by aggregation of progression difference in each segment.
+
+# Methods
+## TimeMeter Algorithm: assessing temporal similarity
+TimeMeter first uses dynamic time warping (DTW) algorithm to align two time-course gene expression vectors (a query and a reference; length may vary) via the R package (“dtw”). TimeMeter corrects the DTW aligned indices by truncating the first (m-1) start time points in one gene if the first m time points can be aligned to the same start points in another gene, and terminating alignment (truncating the rest of time points) if DTW matches the last elements in any of the genes. This will exclude certain time points from alignment, and result in a truncated alignment. TimeMeter then calculates four metrics on truncated alignment that jointly assess gene pair temporal similarity: percentage of alignment for (1) query and for (2) reference, respectively; (3) aligned gene expression correlation; (4) likelihood of alignment arising by chance:
+
+1.	Percentage of alignment for the query: the length of aligned time interval (after truncation) in query divided by total length of query time interval.
+2.	Percentage of alignment for the reference: the length of aligned time interval (after truncation) in reference divided by total length of reference time interval.
+3.	Aligned gene expression correlation (Rho): it is calculated by the Spearman's rank correlation coefficient (Rho) for aligned gene expressions (after truncation). It measures how well the gene expression correlations are after alignment.
+4.	Likelihood of alignment arising by chance (p-value): To further rule out the alignment is not raised by chance, for each gene pair, TimeMeter shuffles the gene expression values of both query and reference separately for 100 times. For each shuffling, it calculates the aligned gene expression Spearman correlation coefficient (Rho) (measurement 2). TimeMeter assumes that the Rho from shuffling follows a Gaussian distribution with mean ($\mu$) and standard deviation ($\sigma$). It calculates the p-value of likelihood of alignment arising by chance by lower-tail probability of Gaussian distribution ($\mu$, $\sigma^2$), assuming the aligned gene expression correlations between query and reference should be significantly higher than these shuffled temporal gene expressions.
+
+These four measurements will give temporal similarity assessments on different aspects.
+
+## TimeMeter Algorithm: identifies differential progression genes
+Given a STP gene pair (identified by previous step), TimeMeter scores the progression difference based on truncated alignment. For each query time point within truncated alignment, TimeMeter groups and calculates the average corresponding aligned reference time. This will result in two variables: aligned query time as independent variable and average aligned reference time as dependent variable. Next, TimeMeter applies piecewise (segmented) regression to these two variables, and partitions them into separate segments. The breakpoints in piecewise regression are determined by the lowest Bayesian Information Criterion (BIC) via enumerating all K (K<=N) possible number of breakpoints (N =10 by default). For each segment, the slope of the regression measures the fold-change of the speed (query versus reference). A slope being greater or less than 1, indicates faster or slower dynamical speed of change, respectively. A slope equivalent or close to 1 is a special case in which the dynamical speed is the same or similar (time shift pattern). TimeMeter further merged adjacent segments if the absolute slope difference less than deltaSlope (we set deltaSlope = 0.1 for this study) by a linear regression, and recalculates the slope. This process is repeated until no adjacent segments have absolute slope difference less than deltaSlope. Then for each segment, TimeMeter calculates the area difference between under the segmented regression line and under the diagonal line, assuming that if the query and reference have no progression difference along time points, the aligned time points should follow the diagonal line (the aligned query time equals the aligned reference time). The extent of deviation from the diagonal line can be used to measure the progression difference. A progression advance score (PAS) is calculated by aggregation of area difference in each segment and normalized by total aligned time length (after truncation) in query.
+
+# Quick Start
+## **Step 1: Loading the data (normalized gene expression values)**
+```{r,message=FALSE}
+library("TimeMeter")
+data(simData)
+data=simdata$TimeShift_10
+gene=data$gene
+query=data$query
+query
+timePoints_query=data$timePoints_query
+timePoints_query
+reference=data$reference
+reference
+timePoints_reference=data$timePoints_reference
+timePoints_reference
+plotExpOriginal(query,timePoints_query,reference,timePoints_reference,
+                title="Time Shift",ref_col="black",query_col="red")
+```
+
+## **Step 2: Temporal Alignment via DTW**
+```{r,message=FALSE}
+alignment=dtw(query,reference)
+dtw_results=list(alignment$index1,alignment$index2)
+index_1=dtw_results[[1]]
+index_2=dtw_results[[2]]
+aligned_values_query=query[index_1]
+aligned_values_reference=reference[index_2]
+aligned_timePoints_query=timePoints_query[index_1]
+aligned_timePoints_reference=timePoints_reference[index_2]
+plotDTW(query,timePoints_query,reference,
+        timePoints_reference,alignment,
+        ref_col="black",query_col="red",
+        title="DTW")
+```
+
+## **Step 3: Truncation**
+```{r,message=FALSE}
+index_alignableRegion=alignableRegionIndex(aligned_timePoints_query,
+                                           aligned_timePoints_reference)
+alignableRegion_values_query=aligned_values_query[index_alignableRegion]
+alignableRegion_values_reference=aligned_values_reference[index_alignableRegion]
+alignableRegion_timePoints_query=aligned_timePoints_query[index_alignableRegion]
+alignableRegion_timePoints_reference=aligned_timePoints_reference[index_alignableRegion]
+plotExpAlignment(query,timePoints_query,
+                 reference,timePoints_reference,
+                 alignment,alignableRegion_values_query,
+                 alignableRegion_timePoints_query,
+                 alignableRegion_values_reference,
+                 alignableRegion_timePoints_reference,addAlignmentGreyLine=T,
+                 title="Truncation")
+```
+
+## **Step 4: Calculating four measurements that jointly assess gene pair temporal similarity**
+1. Percentage of alignment for query -- "percentageAlignmentQuery"  
+2. Percentage of alignment for reference -- "percentageAlignmentReference"  
+3. Aligned gene expression correlation -- "Rho"  
+4. Likelihood of alignment arising by chance -- "pValueRho"  
+    
+```{r,message=FALSE,warning=FALSE}
+percentageAlignmentQuery=percentageAlignment(timePoints_query,
+        timePoints_reference,alignableRegion_timePoints_query,
+        alignableRegion_timePoints_reference)["percentage_alignment_query"]
+percentageAlignmentQuery  
+
+percentageAlignmentReference=percentageAlignment(timePoints_query,
+        timePoints_reference,alignableRegion_timePoints_query,
+        alignableRegion_timePoints_reference)["percentage_alignment_reference"]
+percentageAlignmentReference  
+
+Rho=spearmanCorrelation(alignableRegion_values_query,
+        alignableRegion_values_reference)
+Rho  
+
+pValueRho=getPValueRho(Rho,
+        query,timePoints_query,
+        reference,timePoints_reference)
+pValueRho  
+
+```
+## **Step 5: Calculating pairwise relationship between aligned query time and aligned reference time**
+For each query time point within truncated alignment, TimeMeter groups and calculates the average corresponding aligned reference time. 
+
+```{r,message=FALSE,warning=FALSE}
+alignableRegion_timePoints_query_merged=mergeReferencePoints(alignableRegion_timePoints_query,
+    alignableRegion_timePoints_reference)["aligned_timePoints_query_merged"][[1]]
+alignableRegion_timePoints_reference_merged=mergeReferencePoints(alignableRegion_timePoints_query,
+    alignableRegion_timePoints_reference)["aligned_timePoints_reference_merged"][[1]]
+segmentedRegression_out=segmentedRegression(alignableRegion_timePoints_query_merged,
+                                            alignableRegion_timePoints_reference_merged)
+breakPointsMatrix=fetchBreakPoints(segmentedRegression_out)
+breakPointsMatrix
+plotPairwiseTimePoints(alignableRegion_timePoints_query_merged,
+                       alignableRegion_timePoints_reference_merged,
+                       breakPointsMatrix,
+                       title="Aligned Time Points")
+
+```
+## **Step 6: Calculating progression advance score (PAS)**
+
+```{r,message=FALSE,warning=FALSE}
+PAS=getPAS(segmentedRegression_out)$PAS
+PAS
+```
+
+# More Examples
+## **Dynamical Speed Difference**
+```{r,message=FALSE,warning=FALSE}
+data=simdata$Different_speed_1.5
+gene=data$gene
+query=data$query
+query
+timePoints_query=data$timePoints_query
+timePoints_query
+reference=data$reference
+reference
+timePoints_reference=data$timePoints_reference
+timePoints_reference
+plotExpOriginal(query,timePoints_query,reference,timePoints_reference,
+                title="Different Dynamical Speed",ref_col="black",query_col="red")
+
+alignment=dtw(query,reference)
+dtw_results=list(alignment$index1,alignment$index2)
+index_1=dtw_results[[1]]
+index_2=dtw_results[[2]]
+aligned_values_query=query[index_1]
+aligned_values_reference=reference[index_2]
+aligned_timePoints_query=timePoints_query[index_1]
+aligned_timePoints_reference=timePoints_reference[index_2]
+plotDTW(query,timePoints_query,reference,
+        timePoints_reference,alignment,
+        ref_col="black",query_col="red",
+        title="DTW")
+
+index_alignableRegion=alignableRegionIndex(aligned_timePoints_query,
+                                           aligned_timePoints_reference)
+alignableRegion_values_query=aligned_values_query[index_alignableRegion]
+alignableRegion_values_reference=aligned_values_reference[index_alignableRegion]
+alignableRegion_timePoints_query=aligned_timePoints_query[index_alignableRegion]
+alignableRegion_timePoints_reference=aligned_timePoints_reference[index_alignableRegion]
+plotExpAlignment(query,timePoints_query,
+                 reference,timePoints_reference,
+                 alignment,alignableRegion_values_query,
+                 alignableRegion_timePoints_query,
+                 alignableRegion_values_reference,
+                 alignableRegion_timePoints_reference,addAlignmentGreyLine=T,
+                 title="Truncation")
+
+percentageAlignmentQuery=percentageAlignment(timePoints_query,
+        timePoints_reference,alignableRegion_timePoints_query,
+        alignableRegion_timePoints_reference)["percentage_alignment_query"]
+percentageAlignmentQuery  
+
+percentageAlignmentReference=percentageAlignment(timePoints_query,
+        timePoints_reference,alignableRegion_timePoints_query,
+        alignableRegion_timePoints_reference)["percentage_alignment_reference"]
+percentageAlignmentReference  
+
+Rho=spearmanCorrelation(alignableRegion_values_query,
+        alignableRegion_values_reference)
+Rho  
+
+pValueRho=getPValueRho(Rho,
+        query,timePoints_query,
+        reference,timePoints_reference)
+pValueRho  
+
+alignableRegion_timePoints_query_merged=mergeReferencePoints(alignableRegion_timePoints_query,
+    alignableRegion_timePoints_reference)["aligned_timePoints_query_merged"][[1]]
+alignableRegion_timePoints_reference_merged=mergeReferencePoints(alignableRegion_timePoints_query,
+    alignableRegion_timePoints_reference)["aligned_timePoints_reference_merged"][[1]]
+segmentedRegression_out=segmentedRegression(alignableRegion_timePoints_query_merged,
+                                            alignableRegion_timePoints_reference_merged)
+breakPointsMatrix=fetchBreakPoints(segmentedRegression_out)
+breakPointsMatrix
+plotPairwiseTimePoints(alignableRegion_timePoints_query_merged,
+                       alignableRegion_timePoints_reference_merged,
+                       breakPointsMatrix,
+                       title="Aligned Time Points")
+
+PAS=getPAS(segmentedRegression_out)$PAS
+PAS
+```
+
+## **Mixture patterns**
+```{r,message=FALSE,warning=FALSE}
+data=simdata$Complex
+gene=data$gene
+query=data$query
+query
+timePoints_query=data$timePoints_query
+timePoints_query
+reference=data$reference
+reference
+timePoints_reference=data$timePoints_reference
+timePoints_reference
+plotExpOriginal(query,timePoints_query,reference,timePoints_reference,
+                title="Mixture Patterns",ref_col="black",query_col="red")
+
+alignment=dtw(query,reference)
+dtw_results=list(alignment$index1,alignment$index2)
+index_1=dtw_results[[1]]
+index_2=dtw_results[[2]]
+aligned_values_query=query[index_1]
+aligned_values_reference=reference[index_2]
+aligned_timePoints_query=timePoints_query[index_1]
+aligned_timePoints_reference=timePoints_reference[index_2]
+plotDTW(query,timePoints_query,reference,
+        timePoints_reference,alignment,
+        ref_col="black",query_col="red",
+        title="DTW")
+
+index_alignableRegion=alignableRegionIndex(aligned_timePoints_query,
+                                           aligned_timePoints_reference)
+alignableRegion_values_query=aligned_values_query[index_alignableRegion]
+alignableRegion_values_reference=aligned_values_reference[index_alignableRegion]
+alignableRegion_timePoints_query=aligned_timePoints_query[index_alignableRegion]
+alignableRegion_timePoints_reference=aligned_timePoints_reference[index_alignableRegion]
+plotExpAlignment(query,timePoints_query,
+                 reference,timePoints_reference,
+                 alignment,alignableRegion_values_query,
+                 alignableRegion_timePoints_query,
+                 alignableRegion_values_reference,
+                 alignableRegion_timePoints_reference,addAlignmentGreyLine=T,
+                 title="Truncation")
+
+percentageAlignmentQuery=percentageAlignment(timePoints_query,
+        timePoints_reference,alignableRegion_timePoints_query,
+        alignableRegion_timePoints_reference)["percentage_alignment_query"]
+percentageAlignmentQuery  
+
+percentageAlignmentReference=percentageAlignment(timePoints_query,
+        timePoints_reference,alignableRegion_timePoints_query,
+        alignableRegion_timePoints_reference)["percentage_alignment_reference"]
+percentageAlignmentReference  
+
+Rho=spearmanCorrelation(alignableRegion_values_query,
+        alignableRegion_values_reference)
+Rho  
+
+pValueRho=getPValueRho(Rho,
+        query,timePoints_query,
+        reference,timePoints_reference)
+pValueRho  
+
+alignableRegion_timePoints_query_merged=mergeReferencePoints(alignableRegion_timePoints_query,
+    alignableRegion_timePoints_reference)["aligned_timePoints_query_merged"][[1]]
+alignableRegion_timePoints_reference_merged=mergeReferencePoints(alignableRegion_timePoints_query,
+    alignableRegion_timePoints_reference)["aligned_timePoints_reference_merged"][[1]]
+segmentedRegression_out=segmentedRegression(alignableRegion_timePoints_query_merged,
+                                            alignableRegion_timePoints_reference_merged)
+breakPointsMatrix=fetchBreakPoints(segmentedRegression_out)
+breakPointsMatrix
+plotPairwiseTimePoints(alignableRegion_timePoints_query_merged,
+                       alignableRegion_timePoints_reference_merged,
+                       breakPointsMatrix,
+                       title="Aligned Time Points")
+
+PAS=getPAS(segmentedRegression_out)$PAS
+PAS
+```
+## **Adjusted PAS**
+The progression advance score (PAS) measures the “absolute” progression difference between two similar temporal pattern (STP) genes. It is an unbiased way to compare the progression difference for species of unknown developmental paces. To investigate genes with “relative” (“unexpected”) progression difference (the differential progressions that cannot be explained by species-specific developmental paces), TimeMeter calculates a adjusted PAS that represent "relative" progression difference (adjusted by the progression difference of all STP genes).
+
+```{r,message=FALSE,warning=FALSE}
+data(similarHumanMouse)
+alignableRegion_timePoints_query_merged_all=c()
+alignableRegion_timePoints_reference_merged_all=c()
+
+for (k in names(similarHumanMouse)) {
+    alignableRegion_timePoints_query_merged_all=c(alignableRegion_timePoints_query_merged_all,similarHumanMouse[[k]][["alignableRegion_timePoints_query_merged"]])
+    alignableRegion_timePoints_reference_merged_all=c(alignableRegion_timePoints_reference_merged_all,similarHumanMouse[[k]][["alignableRegion_timePoints_reference_merged"]])
+    
+}
+
+Query_to_median_Reference=tapply(alignableRegion_timePoints_reference_merged_all,as.factor(alignableRegion_timePoints_query_merged_all),median)
+
+Query_Time=as.numeric(names(Query_to_median_Reference))
+Query_Time
+Reference_Aligned_Time_Median=as.numeric(Query_to_median_Reference)
+Reference_Aligned_Time_Median
+
+PAS=similarHumanMouse[['ASIC4']]$PAS
+PAS
+PAS_adjusted=adjustedPAS(Query_Time,Reference_Aligned_Time_Median,PAS)
+PAS_adjusted
+
+
+```
+
+
+
+\pagebreak
+
+# Citation
+Jiang, Peng, et al. TimeMeter assesses temporal gene expression similarity and identifies differentially progressing genes. *Nucleic Acids Research* (2020).  
+
+# Contact
+Peng Jiang, Ph.D  
+Computational Biologist  
+Regenerative Biology Laboratory  
+Morgridge Institute for Research  
+330 N. Orchard St., Madison, WI  
+Tel: 608-316-4479  
+Email: PJiang@morgridge.org  

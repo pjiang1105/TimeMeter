@@ -1,0 +1,24 @@
+Package: TimeMeter
+Type: Package
+Title: An R package for assessing temporal gene expression similarity
+        and identifying differentially progressing genes
+Version: 1.0.5
+Author: Peng Jiang
+Maintainer: Peng Jiang <PJiang@morgridge.org>
+Depends: stats4, dtw, segmented
+Description: A dynamic time warping (DTW) based statistical framework for
+    assessing temporal gene expression similarity and identifying genes with
+    temporally differential progressions. It contains four metrics that jointly
+    assess gene pair temporal similarity: percentage of alignment for (1) the query and
+    for (2) the reference, respectively; (3) aligned gene expression correlation; (4)
+    likelihood of alignment arising by chance. These four metrics will give
+    temporal similarity assessments on different aspects. For genes with temporal
+    similar patterns, TimeMeter will partition temporally aligned time points into
+    separate segments via piecewise regression. The differential progression between
+    gene pairs will be scored by aggregation of progressions difference in each
+    segment.
+License: GPL (>= 2)
+LazyData: TRUE
+RoxygenNote: 6.1.1
+NeedsCompilation: no
+Packaged: 2020-03-21 15:40:23 UTC; pjiang
