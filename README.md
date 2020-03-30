@@ -5,11 +5,11 @@ TimeMeter is a statistical tool and R package to assess temporal gene expression
 Jiang, Peng, et al. TimeMeter assesses temporal gene expression similarity and identifies differentially progressing genes. Nucleic Acids Research (2020).
 
 # Contact
-Peng Jiang, Ph.D
-Computational Biologist
-Regenerative Biology Laboratory
-Morgridge Institute for Research
-330 N. Orchard St., Madison, WI
-Tel: 608-316-4479
-Email: PJiang@morgridge.org
+Peng Jiang, Ph.D. 
+Computational Biologist. 
+Regenerative Biology Laboratory. 
+Morgridge Institute for Research. 
+330 N. Orchard St., Madison, WI. 
+Tel: 608-316-4479. 
+Email: PJiang@morgridge.org. 
 
