@@ -6,10 +6,10 @@ Jiang, Peng, et al. TimeMeter assesses temporal gene expression similarity and i
 
 # Contact
 Peng Jiang, Ph.D </br>
-Computational Biologist </br>
-Regenerative Biology Laboratory </br>
-Morgridge Institute for Research 
-330 N. Orchard St., Madison, WI </br> 
-Tel: 608-316-4479 </br>
-Email: PJiang@morgridge.org </br>
+Assistant Professor </br>
+Center for Gene Regulation in Health and Disease (GRHD) </br>
+Center for Applied Data Analysis and Modeling (ADAM) </br>
+Department of Biological, Geological and Environmental Sciences (BGES) </br>
+Cleveland State University, 2121 Euclid Ave, Cleveland, OH 44115 </br>
 
+Lab Website: https://sites.google.com/view/jiang-lab/
